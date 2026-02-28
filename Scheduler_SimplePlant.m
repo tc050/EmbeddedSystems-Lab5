@@ -60,10 +60,9 @@ log = table('Size',[steps 17], ...
     'VariableNames', ["cycle_id","timestamp_start_ms","timestamp_end_ms","dt_target_ms","loop_latency_ms","jitter_ms","deadline_ms","late_flag","controller_mode", ...
                       "scenario_id","r","y","e","u","sat_flag","rx_seq","tx_seq"]);
 
-metrics = table('Size',[steps 17], ...
-    'VariableTypes', ["double","double","double","double","double","uint64","double","double", ...
-                      "string"], ...
-    'VariableNames', ["overshoot_%","steady_state_error","settling_time","rise_time","loop_latency_ms","deadline_miss","miss_rate","jitter","task_bottleneck"]);
+metrics = table('Size',[1 9], ...
+    'VariableTypes', ["double","double","double","double","double","double","uint64","double","double"], ...
+    'VariableNames', ["overshoot_perc","steady_state_error","settling_time","rise_time","avg_loop_latency_ms","p95_loop_latency_ms","deadline_miss","miss_rate","jitter"]);
 
 fprintf("Starting plant loop (%d steps)...\n", steps);
 
@@ -197,3 +196,21 @@ figure; plot(time, log.u);
 xlabel('t (s)'); ylabel('u'); title('Control Output');
 figure; plot(time, log.loop_latency_ms);
 xlabel('t (s)'); ylabel('Latency (ms)'); title('Latency of UDP Round Trip');
+
+% ---- Metric Logs ----
+metric_data = stepinfo(log.y, time, log.y(end), log.y(1));
+
+metrics.overshoot_perc(1) = metric_data.Overshoot;
+metrics.steady_state_error(1) = abs(log.r(end) - mean(log.y(1400:end)));
+metrics.settling_time(1) = metric_data.SettlingTime;
+metrics.rise_time(1) = metric_data.RiseTime;
+metrics.avg_loop_latency_ms(1) = mean(rmmissing(log.loop_latency_ms(:)));
+sorted_latency = sort(rmmissing(log.loop_latency_ms(:)));
+metrics.p95_loop_latency_ms(1) = mean(sorted_latency((steps*0.95):end));
+metrics.deadline_miss(1) = nnz(log.late_flag(:));
+metrics.miss_rate(1) = metrics.deadline_miss(1) / steps * 100;
+metrics.jitter(1) = mean(log.jitter_ms);
+
+% ---- Save Metrics ----
+writetable(log, "metrics.csv");
+disp("Saved metrics.csv");
