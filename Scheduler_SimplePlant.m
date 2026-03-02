@@ -12,8 +12,6 @@ dist = -0.5; % disturbance injection to control output
 
 % --------- Configuration parameters ----------
 dt = 0.02;                 % 50 Hz plant tick (also deadline)
-stress_level = false;          % in ms
-scheduler = 'FCFS';
 
 duration = 30;             % seconds
 steps = round(duration/dt);
@@ -61,7 +59,7 @@ log = table('Size',[steps 17], ...
                       "scenario_id","r","y","e","u","sat_flag","rx_seq","tx_seq"]);
 
 metrics = table('Size',[1 9], ...
-    'VariableTypes', ["double","double","double","double","double","double","uint64","double","double"], ...
+    'VariableTypes', ["double","double","double","double","double","double","double","double","double"], ...
     'VariableNames', ["overshoot_perc","steady_state_error","settling_time","rise_time","avg_loop_latency_ms","p95_loop_latency_ms","deadline_miss","miss_rate","jitter"]);
 
 fprintf("Starting plant loop (%d steps)...\n", steps);
@@ -206,11 +204,11 @@ metrics.settling_time(1) = metric_data.SettlingTime;
 metrics.rise_time(1) = metric_data.RiseTime;
 metrics.avg_loop_latency_ms(1) = mean(rmmissing(log.loop_latency_ms(:)));
 sorted_latency = sort(rmmissing(log.loop_latency_ms(:)));
-metrics.p95_loop_latency_ms(1) = mean(sorted_latency((steps*0.95):end));
+metrics.p95_loop_latency_ms(1) = mean(sorted_latency(steps*0.95:end));
 metrics.deadline_miss(1) = nnz(log.late_flag(:));
 metrics.miss_rate(1) = metrics.deadline_miss(1) / steps * 100;
 metrics.jitter(1) = mean(log.jitter_ms);
 
 % ---- Save Metrics ----
-writetable(log, "metrics.csv");
+writetable(metrics, "metrics.csv");
 disp("Saved metrics.csv");
